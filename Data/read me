@@ -1,0 +1,188 @@
+Note the following about the data:
+
+#Note GDP Data is in domestic currency
+#Quarterly
+gdp_series = {
+    'USA': 'GDPC1',         #Billions
+    'Japan': 'JPNRGDPEXP',  #Billions
+    'Germany': 'CLVMNACSCAB1GQDE',  #Millions
+    'UK': 'NGDPRSAXDCGBQ',          #Millions
+    'France': 'CLVMNACSCAB1GQFR',   #Millions
+    'Canada': 'NGDPRSAXDCCAQ',      #Millions
+    'Italy': 'CLVMNACSCAB1GQIT',    #Millions
+    'Australia': 'NGDPRSAXDCAUQ',
+    'Korea': 'NGDPRSAXDCKRQ',
+    'Mexico': 'NGDPRSAXDCMXQ',
+    'Spain': 'CLVMNACSCAB1GQES',
+    'Netherlands': 'CLVMNACSCAB1GQNL', 
+    'Switzerland': 'CLVMNACSAB1GQCH', 
+    'Norway': 'CLVMNACSCAB1GQNO', 
+    'Sweden': 'CLVMNACSCAB1GQSE'
+    
+}   
+
+#Quarterly
+inflation_series ={
+    'USA': 'CPALTT01USQ657N',
+    'Japan': 'CPALTT01JPQ657N',
+    'Germany': 'CPALTT01DEQ657N',
+    'UK': 'CPALTT01GBQ657N',
+    'France': 'CPALTT01FRQ659N',
+    'Canada': 'CPALTT01CAQ659N',
+    'Italy': 'CPALTT01ITQ659N',
+    'Australia': 'CPALTT01AUQ659N',
+    'Korea': 'CPALTT01KRQ659N',
+    'Mexico': 'CPALTT01MXQ659N',
+    'Spain': 'CPALTT01ESQ659N',
+    'Netherlands': 'CPALTT01NLQ659N',
+    'Switzerland': 'CPALTT01CHQ657N', 
+    'Norway': 'CPALTT01NOQ657N', 
+    'Sweden': 'CPALTT01SEQ657N'
+}
+
+#Quarterly
+Tenyr_rates_series ={
+    'USA': 'IRLTLT01USQ156N',
+    'Japan': 'IRLTLT01JPQ156N',
+    'Germany': 'IRLTLT01DEQ156N',
+    'UK': 'IRLTLT01GBQ156N',
+    'France': 'IRLTLT01FRQ156N',
+    'Canada': 'IRLTLT01CAQ156N',
+    'Italy': 'IRLTLT01ITQ156N',
+    'Australia': 'IRLTLT01AUQ156N',
+    'Korea': 'IRLTLT01KRQ156N',
+    'Mexico': 'IRLTLT01MXQ156N',    #May need to remove, data seems sketchy
+    'Spain': 'IRLTLT01ESQ156N',
+    'Netherlands': 'IRLTLT01NLQ156N',
+    'Switzerland': 'IRLTLT01CHQ156N', 
+    'Norway': 'IRLTLT01NOQ156N', 
+    'Sweden': 'IRLTLT01SEQ156N'
+}
+
+
+#Monthly frequency
+FX_series ={
+    'USA': 'TWEXBGSMTH',      #Nominal Broad U.S. Dollar Index (US Dollar vs Common used currencies in trade)
+    'Japan': 'EXJPUS',
+    'Germany': 'EXUSEU',
+    'UK': 'EXUSUK',
+    'France': 'EXUSEU',
+    'Canada': 'EXCAUS',
+    'Italy': 'EXUSEU',
+    'Australia': 'EXUSAL',
+    'Korea': 'EXKOUS',
+    'Mexico': 'EXMXUS',    
+    'Spain': 'EXUSEU',
+    'Netherlands': 'EXUSEU',
+    'Switzerland': 'EXSZUS', 
+    'Norway': 'EXNOUS', 
+    'Sweden': 'EXSDUS'
+}
+
+
+#Harmonized for consistency and comprability across countries
+#Quarterly
+unemployment_series ={
+    'USA': 'LRHUTTTTUSQ156S',
+    'Japan': 'LRHUTTTTJPQ156S',
+    'Germany': 'LRHUTTTTDEQ156S',
+    'UK': 'LRHUTTTTGBQ156S',
+    'France': 'LRHUTTTTFRQ156S',
+    'Canada': 'LRHUTTTTCAQ156S',
+    'Italy': 'LRHUTTTTITQ156S',
+    'Australia': 'LRHUTTTTAUQ156S',
+    'Korea': 'LRHUTTTTKRQ156S',
+    'Mexico': 'LRHUTTTTMXQ156S',
+    'Spain': 'LRHUTTTTESQ156S',
+    'Netherlands': 'LRHUTTTTNLQ156S',
+    'Switzerland': 'LRHUTTTTCHQ156S',       #Only good from 2010 onward
+    'Norway': 'LRHUTTTTNOQ156S', 
+    'Sweden': 'LRHUTTTTSEQ156S'
+}
+
+#Annual
+#Percentage
+debt_to_GDP_series ={
+    'USA': 'DEBTTLUSA188A',
+    'Japan': 'DEBTTLJPA188A',
+    'Germany': 'GCDODTOTLGDZSEUU',      #Use EU as a proxy
+    'UK': 'DEBTTLGBA188A',
+    'France': 'DEBTTLFRA188A',
+    'Canada': 'DEBTTLCAA188A',
+    'Italy': 'GCDODTOTLGDZSEUU',        #Use EU as a proxy
+    'Australia': 'DEBTTLAUA188A',
+    'Korea': 'DEBTTLKRA188A',           #kinda Shitty
+    'Mexico': 'DEBTTLMXA188A',          #Kinda shitty
+    'Spain': 'GCDODTOTLGDZSEUU',        #Use EU as a proxy
+    'Netherlands': 'GCDODTOTLGDZSEUU',  #Use EU as a proxy
+    'Switzerland': 'DEBTTLCHA188A',       
+    'Norway': 'DEBTTLNOA188A',          #Only short period availible
+    'Sweden': 'DEBTTLSEA188A'
+}
+
+
+#Quarterly
+#Local currency, millions
+exports_series ={
+    'USA': 'NXRSAXDCUSQ',
+    'Japan': 'JPNRGDPEGS',
+    'Germany': 'NXRSAXDCDEQ',      
+    'UK': 'NXRSAXDCGBQ',
+    'France': 'NXRSAXDCFRQ',
+    'Canada': 'NXRSAXDCCAQ',
+    'Italy': 'NXRSAXDCITQ',                 
+    'Australia': 'NXRSAXDCAUQ',
+    'Korea': 'NXRSAXDCKRQ',           
+    'Mexico': 'NXRSAXDCMXQ',        
+    'Spain': 'NAEXKP06ESQ652S',              
+    'Netherlands': 'NAEXKP06NLQ652S',    
+    'Switzerland': 'NAEXKP06CHQ652S',       
+    'Norway': 'NAEXKP06NOQ652S',          
+    'Sweden': 'NAEXKP06SEQ652S'         
+}
+
+
+#Quarterly
+#Local currency, millions
+imports_series ={
+    'USA': 'NMRSAXDCUSQ',
+    'Japan': 'JPNRGDPIGS',
+    'Germany': 'NMRSAXDCDEQ',      
+    'UK': 'NMRSAXDCGBQ',
+    'France': 'NMRSAXDCFRQ',
+    'Canada': 'NMRSAXDCCAQ',
+    'Italy': 'NMRSAXDCITQ',                  
+    'Australia': 'NMRSAXDCAUQ',
+    'Korea': 'NMRSAXDCKRQ',           
+    'Mexico': 'NMRSAXDCMXQ',        
+    'Spain': 'NAEXKP07ESQ652S',              
+    'Netherlands': 'NAEXKP07NLQ652S',   
+    'Switzerland': 'NAEXKP07CHQ652S',       
+    'Norway': 'NAEXKP07NOQ652S',          
+    'Sweden': 'NAEXKP07SEQ652S'          
+}
+
+
+#Quarterly
+#15 years and older, Thousands
+population_series ={
+    'USA': 'LFWATTTTUSQ647S',
+    'Japan': 'LFWATTTTJPQ647S',
+    'Germany': 'LFWATTTTDEQ647S',      
+    'UK': 'LFWATTTTGBQ647S',
+    'France': 'LFWATTTTFRQ647S',
+    'Canada': 'LFWATTTTCAQ647S',
+    'Italy': 'LFWATTTTITQ647S',                  
+    'Australia': 'LFWATTTTAUQ647S',
+    'Korea': 'LFWATTTTKRQ647S',           
+    'Mexico': 'LFWATTTTMXQ647S',        
+    'Spain': 'LFWATTTTESQ647S',             
+    'Netherlands': 'LFWATTTTNLQ647S',    
+    'Switzerland': 'LFWATTTTCHQ647S',       
+    'Norway': 'LFWATTTTNOQ647S',          
+    'Sweden': 'LFWATTTTSEQ647S'         
+}
+
+
+countries = ['USA', 'Japan', 'Germany', 'UK', 'France', 'Canada', 'Italy', 'Australia', 'Korea', 
+             'Mexico', 'Spain', 'Netherlands', 'Switzerland', 'Norway', 'Sweden']
