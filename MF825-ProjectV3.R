@@ -211,3 +211,50 @@ gamma2 <- sum(frp_srate[, 4]) / sum(frp_srate[, 5])
 gamma3 <- sum(frp_tstruct[, 4]) / sum(frp_tstruct[, 5])
 gamma4 <- sum(frp_macro[, 4]) / sum(frp_macro[, 5])
 gamma5 <- sum(frp_fin[, 4]) / sum(frp_fin[, 5])
+
+
+#Part 4: Examine Accuracy of Model---------------------------
+#Read in the Industry Returns at a Yearly level
+FF_model_per <- read.csv(file='FF-Yearly-USA.csv', header=TRUE)
+FF_model_per <- FF_model_per[FF_model_per[,1] >= 1997 & FF_model_per[,1] <= 2023,]
+indus_model_per <- read.csv(file='49-Industries-ValueWeight-USA-Yearly.csv', header=TRUE)
+indus_model_per <- indus_model_per[indus_model_per[,1] >= 1997 & indus_model_per[,1] <= 2023,]
+xrindus_model_per <- indus_model_per
+xrindus_model_per[,2:50] <- indus_model_per[,2:50] - FF_model_per[,5]
+
+col_names <- colnames(indus_model_per)
+betas_rmrf <- matrix(NA, nrow = length(betas_indus[,1])/5, ncol = 50)
+colnames(betas_rmrf) <-  col_names
+betas_srate <- matrix(NA, nrow = length(betas_indus[,1])/5, ncol = 50)
+colnames(betas_srate) <- col_names
+betas_tsruct <- matrix(NA, nrow = length(betas_indus[,1])/5, ncol = 50)
+colnames(betas_tsruct) <- col_names
+betas_macro <- matrix(NA, nrow = length(betas_indus[,1])/5, ncol = 50)
+colnames(betas_macro) <- col_names
+betas_fin <- matrix(NA, nrow = length(betas_indus[,1])/5, ncol = 50)
+colnames(betas_fin) <- col_names
+
+betas_rmrf <- betas_indus[seq(1, length(betas_indus[,1]), by = 5), ]
+betas_srate <- betas_indus[seq(2, length(betas_indus[,1]), by = 5), ]
+betas_tsruct <- betas_indus[seq(3, length(betas_indus[,1]), by = 5), ]
+betas_macro <- betas_indus[seq(4, length(betas_indus[,1]), by = 5), ]
+betas_fin <- betas_indus[seq(5, length(betas_indus[,1]), by = 5), ]
+
+#APT Expected Excess Returns Per Year
+APTxr <- matrix(NA, nrow = length(xrindus_model_per[,1]), ncol = 50)
+colnames(APTxr) <- col_names
+APTxr[,1] <- xrindus_model_per[,1]
+APTxr[,2:50] <- gamma1*betas_rmrf[,2:50] + gamma2*betas_srate[,2:50] + gamma3*betas_tsruct[,2:50] + gamma4*betas_macro[,2:50] + gamma5*betas_fin[,2:50]
+APTxr[,2:50] <- APTxr[,2:50]*100    #Get in Percents to match FF
+
+#Plot each industry APT predicated return vs. Actual Observation
+finalmodel <- list()  #List to store models
+for (i in 2:50){
+  plot(APTxr[,1], APTxr[,i], type = "l", col = 'black', ylim = c(-100, 130), 
+       main = paste("Industy Excess Return 1997 to 2023:", col_names[i]), xlab = 'Date', ylab = 'Excess Return')
+  lines(xrindus_model_per[,1], xrindus_model_per[,i], type = "l", col = 'blue')
+  legend("topright", legend = c("APT", "Observed"), col = c("black", "blue"), lty = 1)
+  
+  #Regress Observed Excess Returns on APT Returns????
+  finalmodel[[i]] <- lm(xrindus_model_per[,i] ~ APTxr[,i])
+}
