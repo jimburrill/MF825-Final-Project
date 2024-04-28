@@ -176,7 +176,7 @@ for (i in 2:50) {
   model <- lm(xrindus_yrly[, i] ~ APTxrtn[, i])
   betas[i-1, 1] <- coef(model)[2]
   alphas[i-1, 1] <- coef(model)[1]
-  residuals_matrix[, i-1] <- residuals(model)
+  #residuals_matrix[, i-1] <- residuals(model)
 }
 
 
