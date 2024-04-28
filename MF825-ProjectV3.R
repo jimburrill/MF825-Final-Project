@@ -34,13 +34,12 @@ macro_uncert_data <- macro_uncert_data[macro_uncert_data[,1] >= 199301 & macro_u
 return20yr <- return20yr[return20yr[,1] >= 199301 & return20yr[,1] <= 202312,]
 
 #Build Economic Factors
-#SHOULD WE SUBTRACT RF FROM ALL FACTORS???????
 short_rate <- FF[, c(1, 5)]   #Inflation proxy
 colnames(short_rate) <- c("Date", "shortRate")
 term_struct <- return20yr
 term_struct[,2] <- term_struct[,2] - FF[,5]     #20yr - MM
 colnames(term_struct) <- c("Date", "termStruct")
-rmrf <- FF[, c(1, 2)]   #Market excess return
+rmrf <- FF[, c(1, 2)]   #Market excess return, DO WE NEED TO ADD RF BACK TO HERE????
 macro_uncert <- macro_uncert_data[,1:2]
 colnames(macro_uncert) <- c("Date", "macroUncer")
 financial_uncert <- financial_uncert_data[,1:2]
@@ -177,7 +176,7 @@ for (i in 1:n_years) {
   frp_macro[i, 2] <- coef(models[[i]])[5]
   frp_fin[i, 2] <- coef(models[[i]])[6]
   
-  #Get HAC standard errors for the coefficients
+  #Get HAC standard errors^2 for the coefficients
   hac_se <- vcovHAC(models[[i]], type = "HC")
   hac_se_factors <- diag(hac_se)
   frp_alphas[i, 3] <- hac_se_factors[1]
@@ -247,6 +246,12 @@ APTxr[,1] <- xrindus_model_per[,1]
 APTxr[,2:50] <- gamma1*betas_rmrf[,2:50] + gamma2*betas_srate[,2:50] + gamma3*betas_tsruct[,2:50] + gamma4*betas_macro[,2:50] + gamma5*betas_fin[,2:50]
 APTxr[,2:50] <- APTxr[,2:50]*100    #Get in Percents to match FF
 
+#Build matrixes to save R-squared values
+rsquared_values <- matrix(NA, nrow = 1, ncol = 49)
+colnames(rsquared_values) <-  col_names[2:50]
+adjusted_rsquared <- matrix(NA, nrow = 1, ncol = 49)
+colnames(adjusted_rsquared) <-  col_names[2:50]
+
 #Plot each industry APT predicated return vs. Actual Observation
 finalmodel <- list()  #List to store models
 for (i in 2:50){
@@ -257,4 +262,219 @@ for (i in 2:50){
   
   #Regress Observed Excess Returns on APT Returns????
   finalmodel[[i]] <- lm(xrindus_model_per[,i] ~ APTxr[,i])
+  model <- lm(xrindus_model_per[,i] ~ APTxr[,i])  #Run this to grab R-square values
+  
+  #Get R Squared values
+  rsquared_values[,i-1] <- summary(model)$r.squared
+  adjusted_rsquared[,i-1] <- summary(model)$adj.r.squared
+}
+
+
+#Part 5: Does the US Model Explain Regional Index Returns---------------------------
+FF <- read.csv(file='FF-Monthly-USA.csv', header=TRUE)
+FF <- FF[FF[,1] >= 200401 & FF[,1] <= 202312,]
+regional_indexes <- read.csv(file='Country-Index-Returns-Monthly.csv', header=TRUE)
+regional_indexes <- regional_indexes[1:240,1:7]
+regional_indexes[,2:7] <- regional_indexes[,2:7]*100
+
+#Compute Excess Returns
+xrregional <- matrix(NA, nrow = length(regional_indexes[,1]), ncol = 7)
+xrregional <- regional_indexes
+xrregional[,2:7] <- regional_indexes[,2:7] - FF[,5]
+
+numregions <- 6
+num_years <- 20
+
+#Generate a list to store models, and a matrix to store industry betas over time
+regionmodels <- list()  #List to store models
+colnames <- colnames(xrregional[,])
+years <- seq(from = 2008, to = 2023, by = 1)
+betas_rmrf <- matrix(NA, nrow = num_years-4, ncol = numregions+1)
+colnames(betas_rmrf) <-  colnames
+betas_rmrf[,1] <- years
+betas_srate <- matrix(NA, nrow = num_years-4, ncol = numregions+1)
+colnames(betas_srate) <- colnames
+betas_srate[,1] <- years
+betas_tsruct <- matrix(NA, nrow = num_years-4, ncol = numregions+1)
+colnames(betas_tsruct) <- colnames
+betas_tsruct[,1] <- years
+betas_macro <- matrix(NA, nrow = num_years-4, ncol = numregions+1)
+colnames(betas_macro) <- colnames
+betas_macro[,1] <- years
+betas_fin <- matrix(NA, nrow = num_years-4, ncol = numregions+1)
+colnames(betas_fin) <- colnames
+betas_fin[,1] <- years
+
+
+#Use 5 years of data to estimate the betas, estimate the betas every year
+for (i in 1:(num_years-4)) {		
+  current_yr <- 2007 + i
+  first_yr <- current_yr - 4
+  first_date <- (first_yr*100) + 01
+  last_date <- (current_yr*100) + 12
+  
+  #Build 4 factor model for current time frame
+  zret <- xrregional[xrregional[,1]>=first_date & xrregional[,1]<=last_date,2:7]
+  xrm  <- as.matrix(rmrf[rmrf[,1]>=first_date & rmrf[,1]<=last_date,2])
+  srate <- as.matrix(short_rate[short_rate[,1]>=first_date & short_rate[,1]<=last_date,2])
+  tstruct <- as.matrix(term_struct[term_struct[,1]>=first_date & term_struct[,1]<=last_date,2])
+  macuncert <- as.matrix(macro_uncert[macro_uncert[,1]>=first_date & macro_uncert[,1]<=last_date,2])
+  finuncert <- as.matrix(financial_uncert[financial_uncert[,1]>=first_date & financial_uncert[,1]<=last_date,2])
+
+  #Run regression for each industry, store the beta coefficients
+  for (j in 1:numregions){
+    regionmodels[[j]] <- lm(zret[,j] ~ xrm + srate + tstruct + macuncert + finuncert)
+    betas_rmrf[i,j+1] <- coef(regionmodels[[j]])[2:2] 
+    betas_srate[i,j+1] <- coef(regionmodels[[j]])[3:3] 
+    betas_tsruct[i,j+1] <- coef(regionmodels[[j]])[4:4] 
+    betas_macro[i,j+1] <- coef(regionmodels[[j]])[5:5] 
+    betas_fin[i,j+1] <- coef(regionmodels[[j]])[6:6] 
+  }
+}
+
+#REDO THIS LOGIG, DONT THINK CORRECT
+#Aggregate regional returns to yearly frequency
+xrregion_yr <- matrix(NA, nrow = num_years-4, ncol = numregions+1)
+colnames(xrregion_yr) <- colnames
+xrregion_yr[,1] <- seq(from = 2008, to = 2023, by = 1)
+for (i in 1:num_years-4){
+  current_yr <- 2007 + i
+  first_date <- (current_yr*100) + 01
+  last_date <- (current_yr*100) + 12
+  
+  temp_returns <- xrregional[xrregional[,1]>=first_date & xrregional[,1]<=last_date,2:7]
+  annual_returns <- sapply(temp_returns, function(x) prod(1 + (x/100)) - 1)
+  xrregion_yr[i,2] <- annual_returns[1]*100
+  xrregion_yr[i,3] <- annual_returns[2]*100
+  xrregion_yr[i,4] <- annual_returns[3]*100
+  xrregion_yr[i,5] <- annual_returns[4]*100
+  xrregion_yr[i,6] <- annual_returns[5]*100
+  xrregion_yr[i,7] <- annual_returns[6]*100
+}
+
+#APT Expected Excess Returns Per Year
+APTxr <- matrix(NA, nrow = length(betas_srate[,1]), ncol = 7)
+colnames(APTxr) <- colnames
+APTxr[,1] <- betas_srate[,1]
+APTxr[,2:7] <- gamma1*betas_rmrf[,2:7] + gamma2*betas_srate[,2:7] + gamma3*betas_tsruct[,2:7] + gamma4*betas_macro[,2:7] + gamma5*betas_fin[,2:7]
+APTxr[,2:7] <- APTxr[,2:7]*100    #Get in Percents to match FF
+
+#Build matrixes to save R-squared values
+rsquared_values <- matrix(NA, nrow = 1, ncol = 6)
+colnames(rsquared_values) <-  colnames[2:7]
+adjusted_rsquared <- matrix(NA, nrow = 1, ncol = 6)
+colnames(adjusted_rsquared) <-  colnames[2:7]
+
+#Plot each industry APT predicated return vs. Actual Observation
+finalmodel <- list()  #List to store models
+for (i in 2:7){
+  plot(APTxr[,1], APTxr[,i], type = "l", col = 'black', ylim = c(-100, 100), 
+       main = paste("Region Excess Return 1997 to 2023:", colnames[i]), xlab = 'Date', ylab = 'Excess Return')
+  lines(xrregion_yr[,1], xrregion_yr[,i], type = "l", col = 'blue')
+  legend("topright", legend = c("APT", "Observed"), col = c("black", "blue"), lty = 1)
+  
+  #Regress Observed Excess Returns on APT Returns????
+  finalmodel[[i]] <- lm(xrregion_yr[,i] ~ APTxr[,i])
+  model <- lm(xrregion_yr[,i] ~ APTxr[,i])  #Run this to grab R-square values
+  
+  #Get R Squared values
+  rsquared_values[,i-1] <- summary(model)$r.squared
+  adjusted_rsquared[,i-1] <- summary(model)$adj.r.squared
+}
+
+
+#Part 6: Does the Model Explain Momentum Portfolio Returns---------------------------
+FF <- read.csv(file='FF-Monthly-USA.csv', header=TRUE)
+FF <- FF[FF[,1] >= 199301 & FF[,1] <= 202312,]
+momentum_ports <- read.csv(file='6-Size-Momentum_Ports.csv', header=TRUE)
+momentum_ports <- momentum_ports[momentum_ports[,1] >= 199301 & momentum_ports[,1] <= 202312,]
+
+#Compute Excess Returns
+xrmomentum <- momentum_ports
+xrmomentum[,2:7] <- xrmomentum[,2:7] - FF[,5]
+
+numports <- 6
+num_years <- 2023-1993 +1
+
+#Generate a list to store models, and a matrix to store industry betas over time
+momentummodels <- list()  #List to store models
+colnames <- colnames(xrmomentum[,])
+years <- seq(from = 1997, to = 2023, by = 1)
+betas_rmrf <- matrix(NA, nrow = num_years-4, ncol = numports+1)
+colnames(betas_rmrf) <-  colnames
+betas_rmrf[,1] <- years
+betas_srate <- matrix(NA, nrow = num_years-4, ncol = numports+1)
+colnames(betas_srate) <- colnames
+betas_srate[,1] <- years
+betas_tsruct <- matrix(NA, nrow = num_years-4, ncol = numports+1)
+colnames(betas_tsruct) <- colnames
+betas_tsruct[,1] <- years
+betas_macro <- matrix(NA, nrow = num_years-4, ncol = numports+1)
+colnames(betas_macro) <- colnames
+betas_macro[,1] <- years
+betas_fin <- matrix(NA, nrow = num_years-4, ncol = numports+1)
+colnames(betas_fin) <- colnames
+betas_fin[,1] <- years
+
+
+#Use 5 years of data to estimate the betas, estimate the betas every year
+for (i in 1:(num_years-4)) {		
+  current_yr <- 1996 + i
+  first_yr <- current_yr - 4
+  first_date <- (first_yr*100) + 01
+  last_date <- (current_yr*100) + 12
+  
+  #Build 4 factor model for current time frame
+  zret <- xrmomentum[xrmomentum[,1]>=first_date & xrmomentum[,1]<=last_date,2:7]
+  xrm  <- as.matrix(rmrf[rmrf[,1]>=first_date & rmrf[,1]<=last_date,2])
+  srate <- as.matrix(short_rate[short_rate[,1]>=first_date & short_rate[,1]<=last_date,2])
+  tstruct <- as.matrix(term_struct[term_struct[,1]>=first_date & term_struct[,1]<=last_date,2])
+  macuncert <- as.matrix(macro_uncert[macro_uncert[,1]>=first_date & macro_uncert[,1]<=last_date,2])
+  finuncert <- as.matrix(financial_uncert[financial_uncert[,1]>=first_date & financial_uncert[,1]<=last_date,2])
+  
+  #Run regression for each industry, store the beta coefficients
+  for (j in 1:numregions){
+    regionmodels[[j]] <- lm(zret[,j] ~ xrm + srate + tstruct + macuncert + finuncert)
+    betas_rmrf[i,j+1] <- coef(regionmodels[[j]])[2:2] 
+    betas_srate[i,j+1] <- coef(regionmodels[[j]])[3:3] 
+    betas_tsruct[i,j+1] <- coef(regionmodels[[j]])[4:4] 
+    betas_macro[i,j+1] <- coef(regionmodels[[j]])[5:5] 
+    betas_fin[i,j+1] <- coef(regionmodels[[j]])[6:6] 
+  }
+}
+
+
+#Momentum portfolio returns at yearly frequency
+xrmomentum_yr <- read.csv(file='6-Size-Momentum_Ports_Annual.csv', header=TRUE)
+xrmomentum_yr <- xrmomentum_yr[xrmomentum_yr[,1] >= 1997 & xrmomentum_yr[,1] <= 2023,]
+xrmomentum_yr[,2:7] <- xrmomentum_yr[,2:7] - FF_model_per[,5]
+
+#APT Expected Excess Returns Per Year
+APTxr <- matrix(NA, nrow = length(betas_srate[,1]), ncol = 7)
+colnames(APTxr) <- colnames
+APTxr[,1] <- betas_srate[,1]
+APTxr[,2:7] <- gamma1*betas_rmrf[,2:7] + gamma2*betas_srate[,2:7] + gamma3*betas_tsruct[,2:7] + gamma4*betas_macro[,2:7] + gamma5*betas_fin[,2:7]
+APTxr[,2:7] <- APTxr[,2:7]*100    #Get in Percents to match FF
+
+#Build matrixes to save R-squared values
+rsquared_values <- matrix(NA, nrow = 1, ncol = 6)
+colnames(rsquared_values) <-  colnames[2:7]
+adjusted_rsquared <- matrix(NA, nrow = 1, ncol = 6)
+colnames(adjusted_rsquared) <-  colnames[2:7]
+
+#Plot each industry APT predicated return vs. Actual Observation
+finalmodel <- list()  #List to store models
+for (i in 2:7){
+  plot(APTxr[,1], APTxr[,i], type = "l", col = 'black', ylim = c(-100, 120), 
+       main = paste("Momentum Port Excess Return 1997 to 2023:", colnames[i]), xlab = 'Date', ylab = 'Excess Return')
+  lines(xrmomentum_yr[,1], xrmomentum_yr[,i], type = "l", col = 'blue')
+  legend("topright", legend = c("APT", "Observed"), col = c("black", "blue"), lty = 1)
+  
+  #Regress Observed Excess Returns on APT Returns????
+  finalmodel[[i]] <- lm(xrmomentum_yr[,i] ~ APTxr[,i])
+  model <- lm(xrmomentum_yr[,i] ~ APTxr[,i])  #Run this to grab R-square values
+  
+  #Get R Squared values
+  rsquared_values[,i-1] <- summary(model)$r.squared
+  adjusted_rsquared[,i-1] <- summary(model)$adj.r.squared
 }
