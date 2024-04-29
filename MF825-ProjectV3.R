@@ -474,7 +474,7 @@ APTxr_roll[,2:7] <- frp_rmrf_roll[7:22,2]*betas_rmrf[,2:7] + frp_srate_roll[7:22
 APTxr_roll[,2:7] <- APTxr_roll[,2:7]*100    #Get in Percents to match FF
 
 #Build matrixes to save R-squared values
-rsquared_values <- matrix(NA, nrow = 1, ncol = 6)
+rsquared_values_roll <- matrix(NA, nrow = 1, ncol = 6)
 colnames(rsquared_values) <-  colnames[2:7]
 adjusted_rsquared <- matrix(NA, nrow = 1, ncol = 6)
 colnames(adjusted_rsquared) <-  colnames[2:7]
@@ -492,7 +492,7 @@ for (i in 2:7){
   model <- lm(xrregion_yr[,i] ~ APTxr_roll[,i])  #Run this to grab R-square values
   
   #Get R Squared values
-  rsquared_values[,i-1] <- summary(model)$r.squared
+  rsquared_values_roll[,i-1] <- summary(model)$r.squared
   adjusted_rsquared[,i-1] <- summary(model)$adj.r.squared
 }
 
@@ -508,10 +508,39 @@ for (i in 2:7) {
        main = paste(colnames[i]), xlab = "Date", ylab = "Excess Returns", ylim = c(y_min, y_max))
   
   # Add a reference line
-  lines(APTxr_roll[,1], APTxr_roll[,i], col = "black")
+  lines(APTxr_roll[,1], APTxr_roll[,i], col = "red")
+  lines(APTxr[,1], APTxr[,i], col = "black")
 }
 # Reset plotting parameters
 par(mfrow = c(1, 1))
+
+
+#Plot R-Squared Values for Comparison
+rsquared_values_all <- rsquared_values
+rsquared_values_all <- rbind(rsquared_values_all, rsquared_values_roll)
+transposed_matrix <- t(rsquared_values_all)
+
+# Create a data frame with the transposed matrix
+data_df <- data.frame(
+  Column = factor(1:6, labels = rownames(transposed_matrix)),  # Assuming column numbers as labels
+  Row1 = transposed_matrix[, 1],
+  Row2 = transposed_matrix[, 2]
+)
+
+# Reshape the data for plotting
+library(tidyr)
+data_long <- pivot_longer(data_df, cols = c(Row1, Row2), names_to = "Row", values_to = "Value")
+
+# Create the grouped bar plot
+library(ggplot2)
+ggplot(data_long, aes(x = factor(Column), y = Value, fill = Row)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +
+  labs(title = "R^2 Values for Region Indexes",
+       x = "Portfolio",
+       y = "R^2",
+       fill = "Gamma") +
+  scale_fill_manual(values = c('black', 'red'), labels = c("Time Series Avg", "5yr Avg")) +
+  theme_bw()
 
 #Part 8: Does the Model Explain Momentum Portfolio Returns---------------------------
 FF <- read.csv(file='FF-Monthly-USA.csv', header=TRUE)
@@ -638,7 +667,7 @@ APTxr_roll[,2:26] <- frp_rmrf_roll[,2]*betas_rmrf[6:27,2:26] + frp_srate_roll[,2
 APTxr_roll[,2:26] <- APTxr_roll[,2:26]*100    #Get in Percents to match FF
 
 #Build matrixes to save R-squared values
-rsquared_values <- matrix(NA, nrow = 1, ncol = 25)
+rsquared_values_roll <- matrix(NA, nrow = 1, ncol = 25)
 colnames(rsquared_values) <-  colnames[2:26]
 adjusted_rsquared <- matrix(NA, nrow = 1, ncol = 25)
 colnames(adjusted_rsquared) <-  colnames[2:26]
@@ -651,7 +680,7 @@ for (i in 2:26){
   model <- lm(xrmomentum_yr[6:27,i] ~ APTxr_roll[,i])  #Run this to grab R-square values
   
   #Get R Squared values
-  rsquared_values[,i-1] <- summary(model)$r.squared
+  rsquared_values_roll[,i-1] <- summary(model)$r.squared
   adjusted_rsquared[,i-1] <- summary(model)$adj.r.squared
 }
 
@@ -661,8 +690,12 @@ par(mfrow = c(5, 5), mar = c(3, 3, 1, 1))  # 5 rows, 5 columns, adjust margin
 # Iterate over each pair of observed and predicted returns
 for (i in 2:26) {
   # Create the plot
+  y_max <- max(c(APTxr_roll[,i], xrmomentum_yr[6:27,i])) * 1.1
+  y_min <- min(c(APTxr_roll[,i], xrmomentum_yr[6:27,i])) * 1.1
+  
   plot(xrmomentum_yr[6:27,1], xrmomentum_yr[6:27,i], type = "l", col = "blue", 
-       main = paste(colnames[i]), xlab = "Date", ylab = "Excess Returns")
+       main = paste(colnames[i]), xlab = "Date", ylab = "Excess Returns", 
+       ylim = c(y_min, y_max))
   
   # Add a reference line
   lines(APTxr[6:27,1], APTxr[6:27,i], col = "black")
@@ -671,6 +704,35 @@ for (i in 2:26) {
 
 # Reset plotting parameters
 par(mfrow = c(1, 1))
+
+
+#Plot R-Squared Values for Comparison
+rsquared_values_all <- rsquared_values
+rsquared_values_all <- rbind(rsquared_values_all, rsquared_values_roll)
+transposed_matrix <- t(rsquared_values_all)
+
+# Create a data frame with the transposed matrix
+data_df <- data.frame(
+  Column = factor(1:25, labels = rownames(transposed_matrix)),  # Assuming column numbers as labels
+  Row1 = transposed_matrix[, 1],
+  Row2 = transposed_matrix[, 2]
+)
+
+# Reshape the data for plotting
+library(tidyr)
+data_long <- pivot_longer(data_df, cols = c(Row1, Row2), names_to = "Row", values_to = "Value")
+
+# Create the grouped bar plot
+library(ggplot2)
+ggplot(data_long, aes(x = factor(Column), y = Value, fill = Row)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +
+  labs(title = "R^2 Values for Region Indexes",
+       x = "Portfolio",
+       y = "R^2",
+       fill = "Gamma") +
+  scale_fill_manual(values = c('black', 'red'), labels = c("Time Series Avg", "5yr Avg")) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 
 #Calculate asset performance using 5 year rolling gamma for Regional and Momentum
