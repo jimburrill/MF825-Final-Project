@@ -212,6 +212,40 @@ gamma4 <- sum(frp_macro[, 4]) / sum(frp_macro[, 5])
 gamma5 <- sum(frp_fin[, 4]) / sum(frp_fin[, 5])
 
 
+
+#Rolling Gammas Calculation
+n_years <- length(betas_2pass[,1])/5 - 4
+years_rolling <- seq(2002, 2023)
+frp_rmrf_roll <- matrix(NA, nrow = n_years, ncol = 2)
+colnames(frp_rmrf_roll) <- c('Date', 'Gamma1')
+frp_rmrf_roll[,1] <- years_rolling
+frp_srate_roll <- matrix(NA, nrow = n_years, ncol = 2)
+colnames(frp_srate_roll) <- c('Date', 'Gamma1')
+frp_srate_roll[,1] <- years_rolling
+frp_tstruct_roll <- matrix(NA, nrow = n_years, ncol = 2)
+colnames(frp_tstruct_roll) <- c('Date', 'Gamma1')
+frp_tstruct_roll[,1] <- years_rolling
+frp_macro_roll <- matrix(NA, nrow = n_years, ncol = 2)
+colnames(frp_macro_roll) <- c('Date', 'Gamma1')
+frp_macro_roll[,1] <- years_rolling
+frp_fin_roll <- matrix(NA, nrow = n_years, ncol = 2)
+colnames(frp_fin_roll) <- c('Date', 'Gamma1')
+frp_fin_roll[,1] <- years_rolling
+frp_alphas_roll <- matrix(NA, nrow = n_years, ncol = 2)
+colnames(frp_alphas_roll) <- c('Date', 'Gamma1')
+frp_alphas_roll[,1] <- years_rolling
+
+for (i in 1:(n_years)){
+  first_date <- years[i]
+  last_date <- years[i+4]
+  frp_alphas_roll[i,2] <- sum(frp_alphas[, 4][frp_alphas[, 1] >= first_date & frp_alphas[, 1] <= last_date]) / sum(frp_alphas[, 5][frp_alphas[, 1] >= first_date & frp_alphas[, 1] <= last_date])
+  frp_rmrf_roll[i,2] <- sum(frp_rmrf[, 4][frp_rmrf[, 1] >= first_date & frp_rmrf[, 1] <= last_date]) / sum(frp_rmrf[, 5][frp_rmrf[, 1] >= first_date & frp_rmrf[, 1] <= last_date])
+  frp_srate_roll[i,2] <- sum(frp_srate[, 4][frp_srate[, 1] >= first_date & frp_srate[, 1] <= last_date]) / sum(frp_srate[, 5][frp_srate[, 1] >= first_date & frp_srate[, 1] <= last_date])
+  frp_tstruct_roll[i,2] <- sum(frp_tstruct[, 4][frp_tstruct[, 1] >= first_date & frp_tstruct[, 1] <= last_date]) / sum(frp_tstruct[, 5][frp_tstruct[, 1] >= first_date & frp_tstruct[, 1] <= last_date])
+  frp_macro_roll[i,2] <- sum(frp_macro[, 4][frp_macro[, 1] >= first_date & frp_macro[, 1] <= last_date]) / sum(frp_macro[, 5][frp_macro[, 1] >= first_date & frp_macro[, 1] <= last_date])
+  frp_fin_roll[i,2] <- sum(frp_fin[, 4][frp_fin[, 1] >= first_date & frp_fin[, 1] <= last_date]) / sum(frp_fin[, 5][frp_fin[, 1] >= first_date & frp_fin[, 1] <= last_date])
+}
+
 #Part 4: Examine Accuracy of Model---------------------------
 #Read in the Industry Returns at a Yearly level
 FF_model_per <- read.csv(file='FF-Yearly-USA.csv', header=TRUE)
@@ -269,8 +303,40 @@ for (i in 2:50){
   adjusted_rsquared[,i-1] <- summary(model)$adj.r.squared
 }
 
+#Part 5: Examine Accuracy of Model Rolling---------------------------
+#Read in the Industry Returns at a Yearly level
+#APT Expected Excess Returns Per Year Rolling Gammas
+APTxr_roll <- matrix(NA, nrow = length(xrindus_model_per[,1])-5, ncol = 50)
+colnames(APTxr_roll) <- col_names
+APTxr_roll[,1] <- xrindus_model_per[6:27,1]
+APTxr_roll[,2:50] <- frp_rmrf_roll[,2]*betas_rmrf[6:27,2:50] + frp_srate_roll[,2]*betas_srate[6:27,2:50] + frp_tstruct_roll[,2]*betas_tsruct[6:27,2:50] + frp_macro_roll[,2]*betas_macro[6:27,2:50] + frp_fin_roll[,2]*betas_fin[6:27,2:50]
+APTxr_roll[,2:50] <- APTxr_roll[,2:50]*100    #Get in Percents to match FF
 
-#Part 5: Does the US Model Explain Regional Index Returns---------------------------
+#Build matrixes to save R-squared values
+rsquared_values <- matrix(NA, nrow = 1, ncol = 49)
+colnames(rsquared_values) <-  col_names[2:50]
+adjusted_rsquared <- matrix(NA, nrow = 1, ncol = 49)
+colnames(adjusted_rsquared) <-  col_names[2:50]
+
+#Plot each industry APT predicated return vs. Actual Observation
+finalmodel <- list()  #List to store models
+for (i in 2:50){
+  plot(APTxr_roll[,1], APTxr_roll[,i], type = "l", col = 'black', ylim = c(-100, 130), 
+       main = paste("Industy Excess Return 2002 to 2023:", col_names[i]), xlab = 'Date', ylab = 'Excess Return')
+  lines(xrindus_model_per[6:27,1], xrindus_model_per[6:27,i], type = "l", col = 'blue')
+  legend("topright", legend = c("APT", "Observed"), col = c("black", "blue"), lty = 1)
+  
+  #Regress Observed Excess Returns on APT Returns????
+  finalmodel[[i]] <- lm(xrindus_model_per[6:27,i] ~ APTxr_roll[,i])
+  model <- lm(xrindus_model_per[6:27,i] ~ APTxr_roll[,i])  #Run this to grab R-square values
+  
+  #Get R Squared values
+  rsquared_values[,i-1] <- summary(model)$r.squared
+  adjusted_rsquared[,i-1] <- summary(model)$adj.r.squared
+}
+
+
+#Part 6: Does the US Model Explain Regional Index Returns---------------------------
 FF <- read.csv(file='FF-Monthly-USA.csv', header=TRUE)
 FF <- FF[FF[,1] >= 200401 & FF[,1] <= 202312,]
 regional_indexes <- read.csv(file='Country-Index-Returns-Monthly.csv', header=TRUE)
@@ -383,17 +449,81 @@ for (i in 2:7){
 }
 
 
-#Part 6: Does the Model Explain Momentum Portfolio Returns---------------------------
+# Set up the plotting layout
+par(mfrow = c(2, 3), mar = c(4, 4, 1, 1))  # 5 rows, 5 columns, adjust margin
+# Iterate over each pair of observed and predicted returns
+for (i in 2:7) {
+  y_max <- max(c(APTxr[,i], xrregion_yr[,i])) * 1.1
+  y_min <- min(c(APTxr[,i], xrregion_yr[,i])) * 1.1
+  # Create the plot
+  plot(xrregion_yr[,1], xrregion_yr[,i], type = "l", col = "blue", 
+       main = paste(colnames[i]), xlab = "Date", ylab = "Excess Returns", ylim = c(y_min, y_max))
+  
+  # Add a reference line
+  lines(APTxr[,1], APTxr[,i], col = "black")
+}
+# Reset plotting parameters
+par(mfrow = c(1, 1))
+
+#Part 7: Does the US Model Explain Regional Index Returns Rolling Gamma---------------------------
+#APT Expected Excess Returns Per Year
+APTxr_roll <- matrix(NA, nrow = length(betas_srate[,1]), ncol = 7)
+colnames(APTxr_roll) <- colnames
+APTxr_roll[,1] <- betas_srate[,1]
+APTxr_roll[,2:7] <- frp_rmrf_roll[7:22,2]*betas_rmrf[,2:7] + frp_srate_roll[7:22,2]*betas_srate[,2:7] + frp_tstruct_roll[7:22,2]*betas_tsruct[,2:7] + frp_macro_roll[7:22,2]*betas_macro[,2:7] + frp_fin_roll[7:22,2]*betas_fin[,2:7]
+APTxr_roll[,2:7] <- APTxr_roll[,2:7]*100    #Get in Percents to match FF
+
+#Build matrixes to save R-squared values
+rsquared_values <- matrix(NA, nrow = 1, ncol = 6)
+colnames(rsquared_values) <-  colnames[2:7]
+adjusted_rsquared <- matrix(NA, nrow = 1, ncol = 6)
+colnames(adjusted_rsquared) <-  colnames[2:7]
+
+#Plot each industry APT predicated return vs. Actual Observation
+finalmodel <- list()  #List to store models
+for (i in 2:7){
+  plot(APTxr_roll[,1], APTxr_roll[,i], type = "l", col = 'black', ylim = c(-100, 100), 
+       main = paste("Region Excess Return 1997 to 2023:", colnames[i]), xlab = 'Date', ylab = 'Excess Return')
+  lines(xrregion_yr[,1], xrregion_yr[,i], type = "l", col = 'blue')
+  legend("topright", legend = c("APT", "Observed"), col = c("black", "blue"), lty = 1)
+  
+  #Regress Observed Excess Returns on APT Returns????
+  finalmodel[[i]] <- lm(xrregion_yr[,i] ~ APTxr_roll[,i])
+  model <- lm(xrregion_yr[,i] ~ APTxr_roll[,i])  #Run this to grab R-square values
+  
+  #Get R Squared values
+  rsquared_values[,i-1] <- summary(model)$r.squared
+  adjusted_rsquared[,i-1] <- summary(model)$adj.r.squared
+}
+
+
+# Set up the plotting layout
+par(mfrow = c(2, 3), mar = c(4, 4, 1, 1))  # 5 rows, 5 columns, adjust margin
+# Iterate over each pair of observed and predicted returns
+for (i in 2:7) {
+  y_max <- max(c(APTxr_roll[,i], xrregion_yr[,i])) * 1.1
+  y_min <- min(c(APTxr_roll[,i], xrregion_yr[,i])) * 1.1
+  # Create the plot
+  plot(xrregion_yr[,1], xrregion_yr[,i], type = "l", col = "blue", 
+       main = paste(colnames[i]), xlab = "Date", ylab = "Excess Returns", ylim = c(y_min, y_max))
+  
+  # Add a reference line
+  lines(APTxr_roll[,1], APTxr_roll[,i], col = "black")
+}
+# Reset plotting parameters
+par(mfrow = c(1, 1))
+
+#Part 8: Does the Model Explain Momentum Portfolio Returns---------------------------
 FF <- read.csv(file='FF-Monthly-USA.csv', header=TRUE)
 FF <- FF[FF[,1] >= 199301 & FF[,1] <= 202312,]
-momentum_ports <- read.csv(file='6-Size-Momentum_Ports.csv', header=TRUE)
+momentum_ports <- read.csv(file='25-Size-Momentum_Ports.csv', header=TRUE)
 momentum_ports <- momentum_ports[momentum_ports[,1] >= 199301 & momentum_ports[,1] <= 202312,]
 
 #Compute Excess Returns
 xrmomentum <- momentum_ports
-xrmomentum[,2:7] <- xrmomentum[,2:7] - FF[,5]
+xrmomentum[,2:26] <- xrmomentum[,2:26] - FF[,5]
 
-numports <- 6
+numports <- 25
 num_years <- 2023-1993 +1
 
 #Generate a list to store models, and a matrix to store industry betas over time
@@ -425,7 +555,7 @@ for (i in 1:(num_years-4)) {
   last_date <- (current_yr*100) + 12
   
   #Build 4 factor model for current time frame
-  zret <- xrmomentum[xrmomentum[,1]>=first_date & xrmomentum[,1]<=last_date,2:7]
+  zret <- xrmomentum[xrmomentum[,1]>=first_date & xrmomentum[,1]<=last_date,2:26]
   xrm  <- as.matrix(rmrf[rmrf[,1]>=first_date & rmrf[,1]<=last_date,2])
   srate <- as.matrix(short_rate[short_rate[,1]>=first_date & short_rate[,1]<=last_date,2])
   tstruct <- as.matrix(term_struct[term_struct[,1]>=first_date & term_struct[,1]<=last_date,2])
@@ -433,38 +563,38 @@ for (i in 1:(num_years-4)) {
   finuncert <- as.matrix(financial_uncert[financial_uncert[,1]>=first_date & financial_uncert[,1]<=last_date,2])
   
   #Run regression for each industry, store the beta coefficients
-  for (j in 1:numregions){
-    regionmodels[[j]] <- lm(zret[,j] ~ xrm + srate + tstruct + macuncert + finuncert)
-    betas_rmrf[i,j+1] <- coef(regionmodels[[j]])[2:2] 
-    betas_srate[i,j+1] <- coef(regionmodels[[j]])[3:3] 
-    betas_tsruct[i,j+1] <- coef(regionmodels[[j]])[4:4] 
-    betas_macro[i,j+1] <- coef(regionmodels[[j]])[5:5] 
-    betas_fin[i,j+1] <- coef(regionmodels[[j]])[6:6] 
+  for (j in 1:numports){
+    momentummodels[[j]] <- lm(zret[,j] ~ xrm + srate + tstruct + macuncert + finuncert)
+    betas_rmrf[i,j+1] <- coef(momentummodels[[j]])[2:2] 
+    betas_srate[i,j+1] <- coef(momentummodels[[j]])[3:3] 
+    betas_tsruct[i,j+1] <- coef(momentummodels[[j]])[4:4] 
+    betas_macro[i,j+1] <- coef(momentummodels[[j]])[5:5] 
+    betas_fin[i,j+1] <- coef(momentummodels[[j]])[6:6] 
   }
 }
 
 
 #Momentum portfolio returns at yearly frequency
-xrmomentum_yr <- read.csv(file='6-Size-Momentum_Ports_Annual.csv', header=TRUE)
+xrmomentum_yr <- read.csv(file='25-Size-Momentum_Ports_Annual.csv', header=TRUE)
 xrmomentum_yr <- xrmomentum_yr[xrmomentum_yr[,1] >= 1997 & xrmomentum_yr[,1] <= 2023,]
-xrmomentum_yr[,2:7] <- xrmomentum_yr[,2:7] - FF_model_per[,5]
+xrmomentum_yr[,2:26] <- xrmomentum_yr[,2:26] - FF_model_per[,5]
 
 #APT Expected Excess Returns Per Year
-APTxr <- matrix(NA, nrow = length(betas_srate[,1]), ncol = 7)
+APTxr <- matrix(NA, nrow = length(betas_srate[,1]), ncol = 26)
 colnames(APTxr) <- colnames
 APTxr[,1] <- betas_srate[,1]
-APTxr[,2:7] <- gamma1*betas_rmrf[,2:7] + gamma2*betas_srate[,2:7] + gamma3*betas_tsruct[,2:7] + gamma4*betas_macro[,2:7] + gamma5*betas_fin[,2:7]
-APTxr[,2:7] <- APTxr[,2:7]*100    #Get in Percents to match FF
+APTxr[,2:26] <- gamma1*betas_rmrf[,2:26] + gamma2*betas_srate[,2:26] + gamma3*betas_tsruct[,2:26] + gamma4*betas_macro[,2:26] + gamma5*betas_fin[,2:26]
+APTxr[,2:26] <- APTxr[,2:26]*100    #Get in Percents to match FF
 
 #Build matrixes to save R-squared values
-rsquared_values <- matrix(NA, nrow = 1, ncol = 6)
-colnames(rsquared_values) <-  colnames[2:7]
-adjusted_rsquared <- matrix(NA, nrow = 1, ncol = 6)
-colnames(adjusted_rsquared) <-  colnames[2:7]
+rsquared_values <- matrix(NA, nrow = 1, ncol = 25)
+colnames(rsquared_values) <-  colnames[2:26]
+adjusted_rsquared <- matrix(NA, nrow = 1, ncol = 25)
+colnames(adjusted_rsquared) <-  colnames[2:26]
 
 #Plot each industry APT predicated return vs. Actual Observation
 finalmodel <- list()  #List to store models
-for (i in 2:7){
+for (i in 2:26){
   plot(APTxr[,1], APTxr[,i], type = "l", col = 'black', ylim = c(-100, 120), 
        main = paste("Momentum Port Excess Return 1997 to 2023:", colnames[i]), xlab = 'Date', ylab = 'Excess Return')
   lines(xrmomentum_yr[,1], xrmomentum_yr[,i], type = "l", col = 'blue')
@@ -478,3 +608,69 @@ for (i in 2:7){
   rsquared_values[,i-1] <- summary(model)$r.squared
   adjusted_rsquared[,i-1] <- summary(model)$adj.r.squared
 }
+
+
+
+# Set up the plotting layout
+par(mfrow = c(5, 5), mar = c(3, 3, 1, 1))  # 5 rows, 5 columns, adjust margin
+
+# Iterate over each pair of observed and predicted returns
+for (i in 2:26) {
+  # Create the plot
+  plot(xrmomentum_yr[,1], xrmomentum_yr[,i], type = "l", col = "blue", 
+       main = paste(colnames[i]), xlab = "Date", ylab = "Excess Returns")
+  
+  # Add a reference line
+  lines(APTxr[,1], APTxr[,i], col = "black")
+}
+
+# Reset plotting parameters
+par(mfrow = c(1, 1))
+
+
+
+#Part 9: Does the Model Explain Momentum Portfolio Returns Rolling Gamma---------------------------
+#APT Expected Excess Returns Per Year
+APTxr_roll <- matrix(NA, nrow = length(betas_srate[6:27,1]), ncol = 26)
+colnames(APTxr_roll) <- colnames
+APTxr_roll[,1] <- betas_srate[6:27,1]
+APTxr_roll[,2:26] <- frp_rmrf_roll[,2]*betas_rmrf[6:27,2:26] + frp_srate_roll[,2]*betas_srate[6:27,2:26] + frp_tstruct_roll[,2]*betas_tsruct[6:27,2:26] + frp_macro_roll[,2]*betas_macro[6:27,2:26] + frp_fin_roll[,2]*betas_fin[6:27,2:26]
+APTxr_roll[,2:26] <- APTxr_roll[,2:26]*100    #Get in Percents to match FF
+
+#Build matrixes to save R-squared values
+rsquared_values <- matrix(NA, nrow = 1, ncol = 25)
+colnames(rsquared_values) <-  colnames[2:26]
+adjusted_rsquared <- matrix(NA, nrow = 1, ncol = 25)
+colnames(adjusted_rsquared) <-  colnames[2:26]
+
+#Plot each industry APT predicated return vs. Actual Observation
+finalmodel <- list()  #List to store models
+for (i in 2:26){
+  #Regress Observed Excess Returns on APT Returns????
+  finalmodel[[i]] <- lm(xrmomentum_yr[6:27,i] ~ APTxr_roll[,i])
+  model <- lm(xrmomentum_yr[6:27,i] ~ APTxr_roll[,i])  #Run this to grab R-square values
+  
+  #Get R Squared values
+  rsquared_values[,i-1] <- summary(model)$r.squared
+  adjusted_rsquared[,i-1] <- summary(model)$adj.r.squared
+}
+
+# Set up the plotting layout
+par(mfrow = c(5, 5), mar = c(3, 3, 1, 1))  # 5 rows, 5 columns, adjust margin
+
+# Iterate over each pair of observed and predicted returns
+for (i in 2:26) {
+  # Create the plot
+  plot(xrmomentum_yr[6:27,1], xrmomentum_yr[6:27,i], type = "l", col = "blue", 
+       main = paste(colnames[i]), xlab = "Date", ylab = "Excess Returns")
+  
+  # Add a reference line
+  lines(APTxr[6:27,1], APTxr[6:27,i], col = "black")
+  lines(APTxr_roll[,1], APTxr_roll[,i], col = "red")
+}
+
+# Reset plotting parameters
+par(mfrow = c(1, 1))
+
+
+#Calculate asset performance using 5 year rolling gamma for Regional and Momentum
